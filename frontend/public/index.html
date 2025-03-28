@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG智能客服机器人</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+        }
+
+        .message {
+            max-width: 80%;
+            margin: 10px 0;
+            padding: 12px 16px;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-message {
+            background-color: #f5f5f5;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+            background-color: #f5f5f5;
+            border-radius: 12px;
+            width: fit-content;
+            margin: 10px 0;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #90a4ae;
+            border-radius: 50%;
+            animation: typing 1s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .file-upload {
+            border: 2px dashed #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover {
+            border-color: #3b82f6;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">RAG智能客服机器人</h1>
+
+        <!-- 文件上传区域 -->
+        <div class="mb-8">
+            <div class="file-upload rounded-lg p-6 text-center cursor-pointer" id="dropZone">
+                <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.md,.markdown">
+                <div class="text-gray-600">
+                    <svg class="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                        </path>
+                    </svg>
+                    <p class="text-lg">拖拽文件到此处或点击上传</p>
+                    <p class="text-sm mt-2">支持 PDF、DOCX、Markdown 格式</p>
+                </div>
+            </div>
+            <div id="uploadStatus" class="mt-4 text-center text-sm text-gray-600"></div>
+        </div>
+
+        <!-- 聊天区域 -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="chat-container overflow-y-auto mb-4" id="chatContainer">
+                <div class="text-center text-gray-500 mb-4">上传文档后开始对话</div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="flex gap-4">
+                <input type="text" id="userInput"
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="请输入您的问题...">
+                <button id="sendButton"
+                    class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                    发送
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+        const API_URL = 'http://localhost:8000';
+
+        // 文件上传处理
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-blue-500');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-blue-500');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500');
+            const files = e.dataTransfer.files;
+            if (files.length) handleFileUpload(files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFileUpload(e.target.files[0]);
+        });
+
+        async function handleFileUpload(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                uploadStatus.textContent = '正在上传文件...';
+                const response = await fetch(`${API_URL}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentSessionId = data.session_id;
+                    uploadStatus.textContent = '文件上传成功！';
+                    uploadStatus.className = 'mt-4 text-center text-sm text-green-600';
+                    addMessage('系统', '文件已成功上传，您可以开始提问了。', 'bot');
+                } else {
+                    throw new Error(data.detail || '上传失败');
+                }
+            } catch (error) {
+                uploadStatus.textContent = `上传失败: ${error.message}`;
+                uploadStatus.className = 'mt-4 text-center text-sm text-red-600';
+            }
+        }
+
+        // 聊天功能
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+
+        function addMessage(sender, text, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.innerHTML = `
+                <div class="font-semibold text-sm mb-1">${sender}</div>
+                <div class="text-gray-700">${text}</div>
+            `;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator';
+            indicator.innerHTML = `
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+            chatContainer.appendChild(indicator);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return indicator;
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message || !currentSessionId) return;
+
+            addMessage('您', message, 'user');
+            userInput.value = '';
+            const typingIndicator = addTypingIndicator();
+
+            try {
+                const response = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        query: message
+                    })
+                });
+
+                const data = await response.json();
+                typingIndicator.remove();
+
+                if (response.ok) {
+                    addMessage('机器人', data.answer, 'bot');
+                } else {
+                    throw new Error(data.detail || '请求失败');
+                }
+            } catch (error) {
+                typingIndicator.remove();
+                addMessage('系统', `错误: ${error.message}`, 'bot');
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+
+</html>

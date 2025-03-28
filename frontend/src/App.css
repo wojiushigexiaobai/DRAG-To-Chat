@@ -1,0 +1,35 @@
+.app-container {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.main-content {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content > div:first-child {
+  flex: 0 0 auto;
+}
+
+.main-content > div:last-child {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 600px) {
+  .app-container {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  
+  .main-content {
+    min-height: 90vh;
+  }
+} 
