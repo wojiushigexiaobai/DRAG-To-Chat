@@ -1,0 +1,15 @@
+# 复制此文件为 .env 并填写你的API密钥
+# 注意：.env 文件不应该提交到版本控制系统中
+
+# Groq API密钥
+GROQ_API_KEY=<your_GROQ_API_KEY>
+
+# Groq模型配置
+GROQ_LLM_MODEL=llama2-70b-4096
+
+# 嵌入模型配置
+EMBEDDING_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
+
+# 服务器配置
+# PORT=8000
+# HOST=0.0.0.0 
