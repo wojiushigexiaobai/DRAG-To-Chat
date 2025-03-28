@@ -1,6 +1,6 @@
 # DRAG to chat robot
 
-这是一个基于RAG (Retrieval Augmented Generation) 技术的智能客服机器人Web应用。用户可以上传文档（PDF、Word或Markdown），然后机器人可以根据这些文档内容回答用户的问题。
+这是一个基于RAG (Retrieval Augmented Generation) 技术的智能文档问答Web应用。用户可以上传文档（PDF、Word或Markdown），然后机器人可以根据这些文档内容回答用户的问题。
 
 ## 功能特点
 
